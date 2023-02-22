@@ -3,20 +3,23 @@
 #include <stdlib.h>
 #include "gap.h"
 
+#define DEFAULT_SIZE 8
+
 GapBuf buf_create(char *text, size_t size)
 {
     PTR_ASSERT(text);
     GapBuf b = (GapBuf) {
-        .text = (char *) malloc(size + 8),
-        .size = size + 8,
+        .text = (char *) malloc(size + DEFAULT_SIZE),
+        .size = size + DEFAULT_SIZE,
         .gap_start = 0,
-        .gap_size = 8,
+        .gap_size = DEFAULT_SIZE,
+        .pos = 0,
         .x = 0,
         .y = 0
     };
     PTR_ASSERT(b.text);
     memmove(
-        b.text + 8,
+        b.text + DEFAULT_SIZE,
         text,
         size
     );
@@ -62,6 +65,7 @@ char *buf_to_string(GapBuf *b)
 void buf_append_char(GapBuf *b, char ch)
 {
     PTR_ASSERT(b);
+    buf_move(b);
     if(!b->gap_size) { // gap is empty
         size_t after_cursor = b->size - b->gap_start;
         b->gap_size = b->size;
@@ -80,68 +84,55 @@ void buf_append_char(GapBuf *b, char ch)
         b->x = 0;
         ++b->y;
     } else ++b->x;
+    ++b->pos;
 }
 
 void buf_left(GapBuf *b)
 {
     PTR_ASSERT(b);
-    if(b->gap_start) {
-        --b->gap_start;
+    if(b->pos) {
         --b->x;
-        if(b->text[b->gap_start] == '\n') {
+        --b->pos;
+        if(b->text[b->pos + ((b->pos > b->gap_start) ? b->gap_size : 0)] == '\n') {
             --b->y;
             b->x = 0;
-            while(b->gap_start - b->x && b->text[b->gap_start - b->x - 1] != '\n') ++b->x;
+            while(b->pos - b->x && b->text[b->pos + ((b->pos > b->gap_start) ? b->gap_size : 0) - b->x - 1] != '\n') ++b->x;
         }
-        b->text[b->gap_start + b->gap_size] = b->text[b->gap_start];
     }
 }
 
 void buf_right(GapBuf *b)
 {
     PTR_ASSERT(b);
-    if(b->gap_start + b->gap_size < b->size) {
-        ++b->gap_start;
+    if(b->pos < b->size - b->gap_size) {
         ++b->x;
-        if(b->text[b->gap_start + b->gap_size - 1] == '\n') {
+        ++b->pos;
+        if(b->text[b->pos + ((b->pos > b->gap_start) ? b->gap_size : 0) - 1] == '\n') {
             ++b->y;
             b->x = 0;
         }
-        b->text[b->gap_start - 1] = b->text[b->gap_start + b->gap_size - 1];
     }
 }
 
 void buf_up(GapBuf *b)
 {
-    size_t pos = b->gap_start;
-    while(b->gap_start && b->text[b->gap_start - 1] != '\n')
-        buf_left(b);
-    pos -= b->gap_start;
-    do buf_left(b);
-    while(b->gap_start && b->text[b->gap_start - 1] != '\n');
-    for(size_t i = 0; i < pos && b->text[b->gap_start + b->gap_size] != '\n'; ++i) {
-        buf_right(b);
-    }
+    (void) b;
+    // TODO
 }
 
 void buf_down(GapBuf *b)
 {
-    size_t pos = b->gap_start;
-    while(b->gap_start && b->text[b->gap_start - 1] != '\n')
-        buf_left(b);
-    pos -= b->gap_start;
-    do buf_right(b);
-    while(b->gap_start + b->gap_size < b->size && b->text[b->gap_start - 1] != '\n');
-    for(size_t i = 0; i < pos && b->text[b->gap_start + b->gap_size] != '\n'; ++i) {
-        buf_right(b);
-    }
+    (void) b;
+    // TODO
 }
 
 void buf_delete(GapBuf *b)
 {
     PTR_ASSERT(b);
+    if(b->pos != b->gap_start) buf_move(b);
     if(b->gap_start) {
         --b->x;
+        --b->pos;
         if(b->text[--b->gap_start] == '\n') {
             --b->y;
             b->x = 0;
@@ -149,4 +140,26 @@ void buf_delete(GapBuf *b)
         }
         ++b->gap_size;
     }
+}
+
+void buf_move(GapBuf *b)
+{
+    PTR_ASSERT(b);
+
+    if(b->pos > b->size - b->gap_size) b->pos = b->size - b->gap_size;
+
+    if(b->pos < b->gap_start) {
+        memmove(
+            b->text + b->gap_start + b->gap_size - (b->gap_start - b->pos),
+            b->text + b->pos,
+            b->gap_start + b->pos
+        );
+    } else {
+        memmove(
+            b->text + b->gap_start,
+            b->text + b->gap_start + b->gap_size,
+            b->pos - b->gap_start
+        );
+    }
+    b->gap_start = b->pos;
 }

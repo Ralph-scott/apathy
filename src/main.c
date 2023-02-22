@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 #include <stdlib.h>
 #include <curses.h>
 #include "apathy.h"
@@ -55,7 +56,11 @@ int main(int argc, char **argv)
                     buf_append_char(&b, c);
             break;
         }
-        printw("%s", buf_to_string(&b));
+        size_t size = b.size - b.gap_size > 1000 ? 1000 : b.size - b.gap_size;
+        char *display = malloc(size + 1);
+        memmove(display, buf_to_string(&b), size);
+        display[size] = 0;
+        printw("%s", display);
         move(b.y, b.x);
         refresh();
         c = getch();

@@ -10,6 +10,7 @@ typedef struct {
     size_t size;
     size_t gap_start;
     size_t gap_size;
+    size_t pos;
     size_t x;
     size_t y;
 } GapBuf;
@@ -23,5 +24,6 @@ void buf_right(GapBuf *b);
 void buf_up(GapBuf *b);
 void buf_down(GapBuf *b);
 void buf_delete(GapBuf *b);
+void buf_move(GapBuf *b);
 
 #endif // GAPBUF_H_
